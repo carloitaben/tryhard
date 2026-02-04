@@ -1,0 +1,16 @@
+*.db
+*.pem
+*.tsbuildinfo
+.DS_Store
+.env
+.next
+.pnpm-debug.log*
+.sst
+.vercel
+/build
+/dist
+/images
+/videos
+/out
+next-env.d.ts
+node_modules
