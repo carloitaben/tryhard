@@ -84,7 +84,7 @@ describe(Result.map.name, () => {
       Result.map((value) => value.toString()),
     )
     expect(result).resolves.toEqual(Result.ok("1"))
-    expectTypeOf(result).toEqualTypeOf<Result.ResultAsync<string, never>>()
+    expectTypeOf(result).toEqualTypeOf<Promise<Result.Result<string, never>>>()
   })
 })
 
@@ -318,5 +318,223 @@ describe(Result.filterOrFail.name, () => {
     expectTypeOf(error).toEqualTypeOf<
       Result.ResultAsync<never, number | string>
     >()
+  })
+})
+
+describe(Result.catchAll.name, () => {
+  test("sync", () => {
+    const fn = vi.fn(() => Result.ok("fallback"))
+    const result = pipe(Result.error(0), Result.catchAll(fn))
+    expect(result).toEqual(Result.ok("fallback"))
+    expectTypeOf(result).toEqualTypeOf<Result.Result<string, never>>()
+    expect(fn).toHaveBeenCalledWith(0)
+  })
+  test("async", () => {
+    const fn = vi.fn(() => Result.ok("fallback"))
+    const result = pipe(Result.error(Promise.resolve(0)), Result.catchAll(fn))
+    expect(result).resolves.toEqual(Result.ok("fallback"))
+    expectTypeOf(result).toEqualTypeOf<Promise<Result.Result<string, never>>>()
+    expect(fn).toHaveBeenCalledWith(0)
+  })
+})
+
+describe(Result.catchTag.name, () => {
+  test("sync", () => {
+    const fn = vi.fn(() => Result.ok("fallback"))
+    const result = pipe(
+      Result.error(new Result.UnknownException()),
+      Result.flatMap(() => Result.error("boom")),
+      Result.catchTag("UnknownException", fn),
+    )
+    expect(result).toEqual(Result.ok("fallback"))
+    expectTypeOf(result).toEqualTypeOf<Result.Result<string, string>>()
+    expect(fn).toHaveBeenCalledWith(new Result.UnknownException())
+  })
+})
+
+describe(Result.catchIf.name, () => {
+  test("sync", () => {
+    const recovered = pipe(
+      Result.error("boom"),
+      Result.catchIf(
+        (e) => e === "boom",
+        () => Result.ok("recovered"),
+      ),
+    )
+    expect(recovered).toEqual(Result.ok("recovered"))
+
+    const kept = pipe(
+      Result.error("boom"),
+      Result.catchIf(
+        (e) => e === "other",
+        () => Result.ok("recovered"),
+      ),
+    )
+    expect(kept).toEqual(Result.error("boom"))
+  })
+})
+
+describe(Result.catchSome.name, () => {
+  test("sync", () => {
+    const recovered = pipe(
+      Result.error("boom"),
+      Result.catchSome((e) => (e === "boom" ? Result.ok("ok") : undefined)),
+    )
+    expect(recovered).toEqual(Result.ok("ok"))
+
+    const kept = pipe(
+      Result.error("boom"),
+      Result.catchSome((e) => (e === "other" ? Result.ok("ok") : undefined)),
+    )
+    expect(kept).toEqual(Result.error("boom"))
+  })
+})
+
+describe(Result.catchTags.name, () => {
+  type NetworkError = { tag: "NetworkError"; message: string }
+  type OtherError = { tag: "OtherError"; message: string }
+
+  test("sync", () => {
+    const network: NetworkError = { tag: "NetworkError", message: "down" }
+    const result = pipe(
+      Result.error<NetworkError | OtherError>(network),
+      Result.catchTags({
+        NetworkError: () => Result.ok("ok"),
+      }),
+    )
+    expect(result).toEqual(Result.ok("ok"))
+    expectTypeOf(result).toEqualTypeOf<Result.Result<string, OtherError>>()
+  })
+
+  test("missing handler", () => {
+    const other: OtherError = { tag: "OtherError", message: "no" }
+    const result = pipe(
+      Result.error<NetworkError | OtherError>(other),
+      Result.catchTags({
+        NetworkError: () => Result.ok("ok"),
+      }),
+    )
+    expect(result).toEqual(Result.error(other))
+  })
+
+  test("async", () => {
+    const result = pipe(
+      Result.error<NetworkError | OtherError>(
+        Promise.resolve({ tag: "NetworkError", message: "down" }),
+      ),
+      Result.catchTags({
+        NetworkError: () => Result.ok("ok"),
+      }),
+    )
+    expect(result).resolves.toEqual(Result.ok("ok"))
+  })
+})
+
+describe(Result.orElse.name, () => {
+  test("sync", () => {
+    const recovered = pipe(
+      Result.error("boom"),
+      Result.orElse(() => Result.ok("fallback")),
+    )
+    expect(recovered).toEqual(Result.ok("fallback"))
+    expectTypeOf(recovered).toEqualTypeOf<Result.Result<string, never>>()
+  })
+
+  test("async", () => {
+    const recovered = pipe(
+      Result.error(Promise.resolve("boom")),
+      Result.orElse(() => Result.ok("fallback")),
+    )
+    expect(recovered).resolves.toEqual(Result.ok("fallback"))
+    expectTypeOf(recovered).toEqualTypeOf<Result.ResultAsync<string, never>>()
+  })
+})
+
+describe(Result.orElseFail.name, () => {
+  test("sync", () => {
+    const result = pipe(
+      Result.error("boom"),
+      Result.orElseFail((e) => `wrapped:${e}`),
+    )
+    expect(result).toEqual(Result.error("wrapped:boom"))
+    expectTypeOf(result).toEqualTypeOf<Result.Result<never, string>>()
+  })
+
+  test("async", () => {
+    const result = pipe(
+      Result.error(Promise.resolve("boom")),
+      Result.orElseFail((e) => `wrapped:${e}`),
+    )
+    expect(result).resolves.toEqual(Result.error("wrapped:boom"))
+    expectTypeOf(result).toEqualTypeOf<Result.ResultAsync<never, string>>()
+  })
+})
+
+describe(Result.orElseSucceed.name, () => {
+  test("sync", () => {
+    const result = pipe(
+      Result.error("boom"),
+      Result.orElseSucceed((e) => `default:${e}`),
+    )
+    expect(result).toEqual(Result.ok("default:boom"))
+    expectTypeOf(result).toEqualTypeOf<Result.Result<string, never>>()
+  })
+
+  test("async", () => {
+    const result = pipe(
+      Result.error(Promise.resolve("boom")),
+      Result.orElseSucceed((e) => `default:${e}`),
+    )
+    expect(result).resolves.toEqual(Result.ok("default:boom"))
+    expectTypeOf(result).toEqualTypeOf<Result.ResultAsync<string, never>>()
+  })
+})
+
+describe(Result.orDie.name, () => {
+  test("sync", () => {
+    const ok = pipe(Result.ok(1), Result.orDie())
+    expect(ok).toEqual(Result.ok(1))
+    expectTypeOf(ok).toEqualTypeOf<Result.Result<number, never>>()
+
+    expect(() => pipe(Result.error("boom"), Result.orDie())).toThrow("boom")
+  })
+
+  test("async", () => {
+    const ok = pipe(Result.ok(Promise.resolve(1)), Result.orDie())
+    expect(ok).resolves.toEqual(Result.ok(1))
+    expectTypeOf(ok).toEqualTypeOf<Result.ResultAsync<number, never>>()
+
+    const failed = pipe(Result.error(Promise.resolve("boom")), Result.orDie())
+    expect(failed).rejects.toBe("boom")
+  })
+})
+
+describe(Result.orDieWith.name, () => {
+  test("sync", () => {
+    const ok = pipe(
+      Result.ok(1),
+      Result.orDieWith((error) => `mapped:${error}`),
+    )
+    expect(ok).toEqual(Result.ok(1))
+    expectTypeOf(ok).toEqualTypeOf<Result.Result<number, never>>()
+
+    expect(() =>
+      pipe(Result.error("boom"), Result.orDieWith((e) => `mapped:${e}`)),
+    ).toThrow("mapped:boom")
+  })
+
+  test("async", () => {
+    const ok = pipe(
+      Result.ok(Promise.resolve(1)),
+      Result.orDieWith((e) => `mapped:${e}`),
+    )
+    expect(ok).resolves.toEqual(Result.ok(1))
+    expectTypeOf(ok).toEqualTypeOf<Result.ResultAsync<number, never>>()
+
+    const failed = pipe(
+      Result.error(Promise.resolve("boom")),
+      Result.orDieWith((e) => `mapped:${e}`),
+    )
+    expect(failed).rejects.toBe("mapped:boom")
   })
 })
