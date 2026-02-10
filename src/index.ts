@@ -351,3 +351,5 @@ export function filterOrDie(
   return (result: UnknownResultMaybeAsync) =>
     result instanceof Promise ? result.then(apply) : apply(result)
 }
+
+// TODO: error matching APIs, fallbacks, retry...

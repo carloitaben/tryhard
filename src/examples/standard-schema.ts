@@ -1,3 +1,5 @@
+import * as Result from ".."
+
 // #########################
 // ###   Standard Typed  ###
 // #########################
@@ -107,3 +109,19 @@ export declare namespace StandardSchemaV1 {
   export type InferOutput<Schema extends StandardTypedV1> =
     StandardTypedV1.InferOutput<Schema>
 }
+
+export class StandardSchemaError extends Result.TaggedError(
+  "StandardSchemaError",
+) {
+  constructor(public issues: ReadonlyArray<StandardSchemaV1.Issue>) {
+    super(issues[0]!.message)
+  }
+}
+
+export function schema() {}
+
+export function schemaOrElse() {}
+
+export function schemaOrFail() {}
+
+export function schemaOrDie() {}
