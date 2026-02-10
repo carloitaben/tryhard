@@ -114,8 +114,45 @@ export class StandardSchemaError extends Result.TaggedError(
   "StandardSchemaError",
 ) {
   constructor(public issues: ReadonlyArray<StandardSchemaV1.Issue>) {
-    super(issues[0]!.message)
+    const first = issues[0]
+    const message = first ? first.message : "Standard schema error"
+    super(message)
   }
+}
+
+function validationToResult<Output>(
+  validation: StandardSchemaV1.Result<Output>,
+): Result.Result<Output, StandardSchemaError> {
+  if (!validation.issues) return Result.ok(validation.value)
+  return Result.error(new StandardSchemaError(validation.issues))
+}
+
+function validateMaybeAsync<S extends StandardSchemaV1>(
+  schema: S,
+  value: unknown,
+): Result.ResultMaybeAsync<
+  StandardSchemaV1.InferOutput<S>,
+  StandardSchemaError
+> {
+  const validation = schema["~standard"].validate(value)
+  if (validation instanceof Promise) {
+    return validation.then(validationToResult)
+  }
+  return validationToResult(validation)
+}
+
+function foldValidation<Output, A, E>(
+  validation: Result.ResultMaybeAsync<Output, StandardSchemaError>,
+  onError: (error: StandardSchemaError) => Result.ResultMaybeAsync<A, E>,
+): Result.ResultMaybeAsync<Output | A, E> {
+  if (validation instanceof Promise) {
+    return validation.then((result) => {
+      if (Result.isError(result)) return onError(result.error)
+      return result
+    })
+  }
+  if (Result.isError(validation)) return onError(validation.error)
+  return validation
 }
 
 /**
@@ -127,26 +164,19 @@ export function schema<
   O,
 >(
   schema: S,
-): (
-  result: I,
-) => Result.ResultFor<
+): Result.Combinator<
   I,
   StandardSchemaV1.InferOutput<S>,
   Result.InferError<I> | StandardSchemaError
 >
 
 export function schema(schema: StandardSchemaV1) {
-  function apply(result: Result.UnknownResult): Result.UnknownResult {
-    if (Result.isError(result)) return result
-    const validation = schema["~standard"].validate(result.value)
-    if (validation instanceof Promise) {
-      throw Error("TODO: not implemented")
-    }
-    if (!validation.issues) return Result.ok(validation.value)
-    return Result.error(new StandardSchemaError(validation.issues))
-  }
-  return (result: Result.UnknownResultMaybeAsync) =>
-    result instanceof Promise ? result.then(apply) : apply(result)
+  const combinator = Result.flatMap((value: unknown) =>
+    validateMaybeAsync(schema, value),
+  )
+  return (
+    result: Result.UnknownResultMaybeAsync,
+  ): Result.UnknownResultMaybeAsync => combinator(result)
 }
 
 /**
@@ -159,22 +189,17 @@ export function schemaOrElse<
 >(
   schema: S,
   orElse: () => O,
-): (
-  result: I,
-) => Result.ResultFor<I, Result.InferSuccess<I> | O, Result.InferError<I>>
+): Result.Combinator<I, Result.InferSuccess<I> | O, Result.InferError<I>>
 
 export function schemaOrElse(schema: StandardSchemaV1, orElse: () => unknown) {
-  function apply(result: Result.UnknownResult): Result.UnknownResult {
-    if (Result.isError(result)) return result
-    const validation = schema["~standard"].validate(result.value)
-    if (validation instanceof Promise) {
-      throw Error("TODO: not implemented")
-    }
-    if (!validation.issues) return Result.ok(validation.value)
-    return Result.ok(orElse())
-  }
-  return (result: Result.UnknownResultMaybeAsync) =>
-    result instanceof Promise ? result.then(apply) : apply(result)
+  const combinator = Result.flatMap((value: unknown) =>
+    foldValidation(validateMaybeAsync(schema, value), () =>
+      Result.ok(orElse()),
+    ),
+  )
+  return (
+    result: Result.UnknownResultMaybeAsync,
+  ): Result.UnknownResultMaybeAsync => combinator(result)
 }
 
 /**
@@ -187,9 +212,7 @@ export function schemaOrFail<
 >(
   schema: S,
   orFailWith: () => O,
-): (
-  result: I,
-) => Result.ResultFor<
+): Result.Combinator<
   I,
   StandardSchemaV1.InferOutput<S>,
   Result.InferError<I> | O
@@ -199,17 +222,14 @@ export function schemaOrFail(
   schema: StandardSchemaV1,
   orFailWith: () => unknown,
 ) {
-  function apply(result: Result.UnknownResult): Result.UnknownResult {
-    if (Result.isError(result)) return result
-    const validation = schema["~standard"].validate(result.value)
-    if (validation instanceof Promise) {
-      throw Error("TODO: not implemented")
-    }
-    if (!validation.issues) return Result.ok(validation.value)
-    return Result.error(orFailWith())
-  }
-  return (result: Result.UnknownResultMaybeAsync) =>
-    result instanceof Promise ? result.then(apply) : apply(result)
+  const combinator = Result.flatMap((value: unknown) =>
+    foldValidation(validateMaybeAsync(schema, value), () =>
+      Result.error(orFailWith()),
+    ),
+  )
+  return (
+    result: Result.UnknownResultMaybeAsync,
+  ): Result.UnknownResultMaybeAsync => combinator(result)
 }
 
 /**
@@ -221,20 +241,13 @@ export function schemaOrDie<
 >(
   schema: S,
   orDie: () => never,
-): (
-  result: I,
-) => Result.ResultFor<I, StandardSchemaV1.InferOutput<S>, Result.InferError<I>>
+): Result.Combinator<I, StandardSchemaV1.InferOutput<S>, Result.InferError<I>>
 
 export function schemaOrDie(schema: StandardSchemaV1, orDie: () => never) {
-  function apply(result: Result.UnknownResult): Result.UnknownResult {
-    if (Result.isError(result)) return result
-    const validation = schema["~standard"].validate(result.value)
-    if (validation instanceof Promise) {
-      throw Error("TODO: not implemented")
-    }
-    if (!validation.issues) return Result.ok(validation.value)
-    return orDie()
-  }
-  return (result: Result.UnknownResultMaybeAsync) =>
-    result instanceof Promise ? result.then(apply) : apply(result)
+  const combinator = Result.flatMap((value: unknown) =>
+    foldValidation(validateMaybeAsync(schema, value), () => orDie()),
+  )
+  return (
+    result: Result.UnknownResultMaybeAsync,
+  ): Result.UnknownResultMaybeAsync => combinator(result)
 }

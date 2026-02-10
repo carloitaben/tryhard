@@ -32,6 +32,9 @@ type HasPromise<T> = object extends T
 export type ResultFor<R, A, E> =
   true extends HasPromise<R> ? ResultAsync<A, E> : Result<A, E>
 
+/**
+ * TODO: document
+ */
 export type Combinator<
   R extends ResultMaybeAsync<any, any>,
   A = InferSuccess<R>,
@@ -217,9 +220,7 @@ export function flatMap<
   O extends ResultMaybeAsync<any, any>,
 >(
   callback: (value: InferSuccess<I>) => O,
-): (
-  result: I,
-) => ResultFor<I | O, InferSuccess<O>, InferError<I> | InferError<O>>
+): Combinator<I | O, InferSuccess<O>, InferError<I> | InferError<O>>
 
 export function flatMap(callback: (value: unknown) => UnknownResult) {
   function apply(result: UnknownResult): UnknownResult {
@@ -235,17 +236,16 @@ export function flatMap(callback: (value: unknown) => UnknownResult) {
  */
 export function tap<I extends ResultMaybeAsync<any, any>>(
   callback: (value: InferSuccess<I>) => void | Promise<void>,
-): (result: I) => ResultFor<I, InferSuccess<I>, InferError<I>>
+): Combinator<I, InferSuccess<I>, InferError<I>>
 
 export function tap(callback: (value: unknown) => void | Promise<void>) {
-  function apply(result: UnknownResult) {
-    if (isError(result)) return result
-    const next = callback(result.value)
-    if (!(next instanceof Promise)) return result
-    return next.then<UnknownResult>(() => result)
-  }
-  return (result: UnknownResultMaybeAsync) =>
-    result instanceof Promise ? result.then(apply) : apply(result)
+  const combinator = flatMap((value: unknown) => {
+    const next = callback(value)
+    if (!(next instanceof Promise)) return ok(value)
+    return next.then<UnknownResult>(() => ok(value))
+  })
+  return (result: UnknownResultMaybeAsync): UnknownResultMaybeAsync =>
+    combinator(result)
 }
 
 /**
@@ -253,7 +253,7 @@ export function tap(callback: (value: unknown) => void | Promise<void>) {
  */
 export function tapError<I extends ResultMaybeAsync<any, any>>(
   callback: (error: InferError<I>) => void | Promise<void>,
-): (result: I) => ResultFor<I, InferSuccess<I>, InferError<I>>
+): Combinator<I, InferSuccess<I>, InferError<I>>
 
 export function tapError(callback: (value: unknown) => void | Promise<void>) {
   function apply(result: UnknownResult) {
@@ -271,15 +271,12 @@ export function tapError(callback: (value: unknown) => void | Promise<void>) {
  */
 export function map<I extends ResultMaybeAsync<any, any>, O>(
   callback: (value: InferSuccess<I>) => O,
-): (result: I) => ResultFor<I, O, InferError<I>>
+): Combinator<I, O, InferError<I>>
 
 export function map(callback: (value: unknown) => unknown) {
-  function apply(result: UnknownResult): UnknownResult {
-    if (isError(result)) return result
-    return ok(callback(result.value))
-  }
-  return (result: UnknownResultMaybeAsync) =>
-    result instanceof Promise ? result.then(apply) : apply(result)
+  const combinator = flatMap((value: unknown) => ok(callback(value)))
+  return (result: UnknownResultMaybeAsync): UnknownResultMaybeAsync =>
+    combinator(result)
 }
 
 /**
@@ -287,7 +284,7 @@ export function map(callback: (value: unknown) => unknown) {
  */
 export function mapError<I extends ResultMaybeAsync<any, any>, O>(
   callback: (error: InferError<I>) => O,
-): (result: I) => ResultFor<I, InferSuccess<I>, O>
+): Combinator<I, InferSuccess<I>, O>
 
 export function mapError(callback: (value: unknown) => unknown) {
   function apply(result: UnknownResult): UnknownResult {
@@ -304,19 +301,17 @@ export function mapError(callback: (value: unknown) => unknown) {
 export function filterOrElse<I extends ResultMaybeAsync<any, any>, O>(
   predicate: (value: InferSuccess<I>) => boolean,
   orElse: () => O,
-): (result: I) => ResultFor<I, InferSuccess<I> | O, InferError<I>>
+): Combinator<I, InferSuccess<I> | O, InferError<I>>
 
 export function filterOrElse(
   predicate: (value: unknown) => unknown,
   orElse: () => unknown,
 ) {
-  function apply(result: UnknownResult): UnknownResult {
-    if (isError(result)) return result
-    if (predicate(result.value)) return result
-    return ok(orElse())
-  }
-  return (result: UnknownResultMaybeAsync) =>
-    result instanceof Promise ? result.then(apply) : apply(result)
+  const combinator = flatMap((value: unknown) =>
+    predicate(value) ? ok(value) : ok(orElse()),
+  )
+  return (result: UnknownResultMaybeAsync): UnknownResultMaybeAsync =>
+    combinator(result)
 }
 
 /**
@@ -325,19 +320,17 @@ export function filterOrElse(
 export function filterOrFail<I extends ResultMaybeAsync<any, any>, O>(
   predicate: (value: InferSuccess<I>) => boolean,
   orFailWith: (value: InferSuccess<I>) => O,
-): (result: I) => ResultFor<I, InferSuccess<I>, InferError<I> | O>
+): Combinator<I, InferSuccess<I>, InferError<I> | O>
 
 export function filterOrFail(
   predicate: (value: unknown) => unknown,
   orFailWith: (value: unknown) => unknown,
 ) {
-  function apply(result: UnknownResult): UnknownResult {
-    if (isError(result)) return result
-    if (predicate(result.value)) return result
-    return error(orFailWith(result.value))
-  }
-  return (result: UnknownResultMaybeAsync) =>
-    result instanceof Promise ? result.then(apply) : apply(result)
+  const combinator = flatMap((value: unknown) =>
+    predicate(value) ? ok(value) : error(orFailWith(value)),
+  )
+  return (result: UnknownResultMaybeAsync): UnknownResultMaybeAsync =>
+    combinator(result)
 }
 
 /**
@@ -346,19 +339,17 @@ export function filterOrFail(
 export function filterOrDie<I extends ResultMaybeAsync<any, any>>(
   predicate: (value: InferSuccess<I>) => boolean,
   orDie: () => never,
-): (result: I) => ResultFor<I, InferSuccess<I>, InferError<I>>
+): Combinator<I, InferSuccess<I>, InferError<I>>
 
 export function filterOrDie(
   predicate: (value: unknown) => unknown,
   orDie: () => never,
 ) {
-  function apply(result: UnknownResult): UnknownResult {
-    if (isError(result)) return result
-    if (predicate(result.value)) return result
-    return orDie()
-  }
-  return (result: UnknownResultMaybeAsync) =>
-    result instanceof Promise ? result.then(apply) : apply(result)
+  const combinator = flatMap((value: unknown) =>
+    predicate(value) ? ok(value) : orDie(),
+  )
+  return (result: UnknownResultMaybeAsync): UnknownResultMaybeAsync =>
+    combinator(result)
 }
 
 // TODO: error matching APIs, fallbacks, retry...
