@@ -4,11 +4,10 @@
   "prettier": {
     "semi": false
   },
-  "packageManager": "pnpm@9.15.9",
   "devDependencies": {
-    "typescript": "^5.9.3",
-    "valibot": "^1.1.0",
-    "vitest": "^4.0.8",
-    "zshy": "^0.4.4"
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
   }
 }
