@@ -118,10 +118,123 @@ export class StandardSchemaError extends Result.TaggedError(
   }
 }
 
-export function schema() {}
+/**
+ * TODO: document
+ */
+export function schema<
+  S extends StandardSchemaV1,
+  I extends Result.ResultMaybeAsync<StandardSchemaV1.InferInput<S>, any>,
+  O,
+>(
+  schema: S,
+): (
+  result: I,
+) => Result.ResultFor<
+  I,
+  StandardSchemaV1.InferOutput<S>,
+  Result.InferError<I> | StandardSchemaError
+>
 
-export function schemaOrElse() {}
+export function schema(schema: StandardSchemaV1) {
+  function apply(result: Result.UnknownResult): Result.UnknownResult {
+    if (Result.isError(result)) return result
+    const validation = schema["~standard"].validate(result.value)
+    if (validation instanceof Promise) {
+      throw Error("TODO: not implemented")
+    }
+    if (!validation.issues) return Result.ok(validation.value)
+    return Result.error(new StandardSchemaError(validation.issues))
+  }
+  return (result: Result.UnknownResultMaybeAsync) =>
+    result instanceof Promise ? result.then(apply) : apply(result)
+}
 
-export function schemaOrFail() {}
+/**
+ * TODO: document
+ */
+export function schemaOrElse<
+  S extends StandardSchemaV1,
+  I extends Result.ResultMaybeAsync<StandardSchemaV1.InferInput<S>, any>,
+  O,
+>(
+  schema: S,
+  orElse: () => O,
+): (
+  result: I,
+) => Result.ResultFor<I, Result.InferSuccess<I> | O, Result.InferError<I>>
 
-export function schemaOrDie() {}
+export function schemaOrElse(schema: StandardSchemaV1, orElse: () => unknown) {
+  function apply(result: Result.UnknownResult): Result.UnknownResult {
+    if (Result.isError(result)) return result
+    const validation = schema["~standard"].validate(result.value)
+    if (validation instanceof Promise) {
+      throw Error("TODO: not implemented")
+    }
+    if (!validation.issues) return Result.ok(validation.value)
+    return Result.ok(orElse())
+  }
+  return (result: Result.UnknownResultMaybeAsync) =>
+    result instanceof Promise ? result.then(apply) : apply(result)
+}
+
+/**
+ * TODO: document
+ */
+export function schemaOrFail<
+  S extends StandardSchemaV1,
+  I extends Result.ResultMaybeAsync<StandardSchemaV1.InferInput<S>, any>,
+  O,
+>(
+  schema: S,
+  orFailWith: () => O,
+): (
+  result: I,
+) => Result.ResultFor<
+  I,
+  StandardSchemaV1.InferOutput<S>,
+  Result.InferError<I> | O
+>
+
+export function schemaOrFail(
+  schema: StandardSchemaV1,
+  orFailWith: () => unknown,
+) {
+  function apply(result: Result.UnknownResult): Result.UnknownResult {
+    if (Result.isError(result)) return result
+    const validation = schema["~standard"].validate(result.value)
+    if (validation instanceof Promise) {
+      throw Error("TODO: not implemented")
+    }
+    if (!validation.issues) return Result.ok(validation.value)
+    return Result.error(orFailWith())
+  }
+  return (result: Result.UnknownResultMaybeAsync) =>
+    result instanceof Promise ? result.then(apply) : apply(result)
+}
+
+/**
+ * TODO: document
+ */
+export function schemaOrDie<
+  S extends StandardSchemaV1,
+  I extends Result.ResultMaybeAsync<StandardSchemaV1.InferInput<S>, any>,
+>(
+  schema: S,
+  orDie: () => never,
+): (
+  result: I,
+) => Result.ResultFor<I, StandardSchemaV1.InferOutput<S>, Result.InferError<I>>
+
+export function schemaOrDie(schema: StandardSchemaV1, orDie: () => never) {
+  function apply(result: Result.UnknownResult): Result.UnknownResult {
+    if (Result.isError(result)) return result
+    const validation = schema["~standard"].validate(result.value)
+    if (validation instanceof Promise) {
+      throw Error("TODO: not implemented")
+    }
+    if (!validation.issues) return Result.ok(validation.value)
+    return orDie()
+  }
+  return (result: Result.UnknownResultMaybeAsync) =>
+    result instanceof Promise ? result.then(apply) : apply(result)
+}

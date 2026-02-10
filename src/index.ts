@@ -10,15 +10,15 @@ export type Error<E> = {
 
 export type Result<A, E> = Ok<A> | Error<E>
 
-type UnknownResult = Result<unknown, unknown>
+export type UnknownResult = Result<unknown, unknown>
 
 export type ResultAsync<A, E> = Promise<Result<A, E>>
 
-type UnknownResultAsync = Promise<UnknownResult>
+export type UnknownResultAsync = Promise<UnknownResult>
 
 export type ResultMaybeAsync<A, E> = Result<A, E> | Promise<Result<A, E>>
 
-type UnknownResultMaybeAsync = UnknownResult | Promise<UnknownResult>
+export type UnknownResultMaybeAsync = UnknownResult | Promise<UnknownResult>
 
 type HasPromise<T> = object extends T
   ? false
@@ -26,8 +26,17 @@ type HasPromise<T> = object extends T
     ? true
     : false
 
-type ResultFor<R, T, E> =
-  true extends HasPromise<R> ? ResultAsync<T, E> : Result<T, E>
+/**
+ * TODO: document
+ */
+export type ResultFor<R, A, E> =
+  true extends HasPromise<R> ? ResultAsync<A, E> : Result<A, E>
+
+export type Combinator<
+  R extends ResultMaybeAsync<any, any>,
+  A = InferSuccess<R>,
+  E = InferError<R>,
+> = (result: R) => ResultFor<R, A, E>
 
 /**
  * TODO: document
