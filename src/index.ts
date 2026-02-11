@@ -63,6 +63,14 @@ export type InferError<T> = [T] extends [
     ? E
     : never
 
+export interface Tagged<T extends string> {
+  tag: T
+}
+
+type BivariantHandler<E, R> = {
+  bivarianceHack(error: E): R
+}["bivarianceHack"]
+
 type InferErrorTags<T> = Extract<InferError<T>, Tagged<string>>["tag"]
 
 type TagOf<E> = E extends { tag: infer T } ? T : never
@@ -150,14 +158,6 @@ export function isError(value: unknown): value is Error<unknown> {
   return isResult(value) && value.type === "error"
 }
 
-export interface Tagged<T extends string> {
-  tag: T
-}
-
-type BivariantHandler<E, R> = {
-  bivarianceHack(error: E): R
-}["bivarianceHack"]
-
 /**
  * TODO: document
  */
@@ -187,7 +187,7 @@ export function TaggedError<const T extends string>(tag: T) {
   return class TaggedError extends Error implements Tagged<T> {
     public readonly tag = tag
     public readonly type = "error"
-    public readonly value = this
+    public readonly error = this
     constructor(message: string, options?: ErrorOptions) {
       super(message, options)
       this.name = tag
@@ -278,6 +278,30 @@ export function flatMap(callback: (value: unknown) => UnknownResult) {
 /**
  * TODO: document
  */
+export function map<I extends ResultMaybeAsync<any, any>, O>(
+  callback: (value: InferSuccess<I>) => O,
+): Combinator<I, O, InferError<I>>
+
+export function map(callback: (value: unknown) => unknown) {
+  const combinator = flatMap((value: unknown) => ok(callback(value)))
+  return (result: UnknownResultMaybeAsync): UnknownResultMaybeAsync =>
+    combinator(result)
+}
+
+/**
+ * TODO: document
+ */
+export function mapError<I extends ResultMaybeAsync<any, any>, O>(
+  callback: (error: InferError<I>) => O,
+): Combinator<I, InferSuccess<I>, O>
+
+export function mapError(callback: (value: unknown) => unknown) {
+  return orElseFail(callback)
+}
+
+/**
+ * TODO: document
+ */
 export function tap<I extends ResultMaybeAsync<any, any>>(
   callback: (value: InferSuccess<I>) => void | Promise<void>,
 ): Combinator<I, InferSuccess<I>, InferError<I>>
@@ -313,25 +337,27 @@ export function tapError(callback: (value: unknown) => void | Promise<void>) {
 /**
  * TODO: document
  */
-export function map<I extends ResultMaybeAsync<any, any>, O>(
-  callback: (value: InferSuccess<I>) => O,
-): Combinator<I, O, InferError<I>>
+export function tapErrorTag<
+  I extends ResultMaybeAsync<any, any>,
+  T extends InferErrorTags<I>,
+>(
+  tag: T,
+  callback: (error: Tagged<T>) => void | Promise<void>,
+): Combinator<I, InferSuccess<I>, InferError<I>>
 
-export function map(callback: (value: unknown) => unknown) {
-  const combinator = flatMap((value: unknown) => ok(callback(value)))
-  return (result: UnknownResultMaybeAsync): UnknownResultMaybeAsync =>
-    combinator(result)
-}
-
-/**
- * TODO: document
- */
-export function mapError<I extends ResultMaybeAsync<any, any>, O>(
-  callback: (error: InferError<I>) => O,
-): Combinator<I, InferSuccess<I>, O>
-
-export function mapError(callback: (value: unknown) => unknown) {
-  return orElseFail(callback)
+export function tapErrorTag(
+  tag: string,
+  callback: (error: Tagged<string>) => void | Promise<void>,
+) {
+  function apply(result: UnknownResult) {
+    if (isOk(result)) return result
+    if (!isTaggedWith(result.error, tag)) return result
+    const next = callback(result.error)
+    if (!(next instanceof Promise)) return result
+    return next.then<UnknownResult>(() => result)
+  }
+  return (result: UnknownResultMaybeAsync) =>
+    result instanceof Promise ? result.then(apply) : apply(result)
 }
 
 /**
@@ -409,18 +435,6 @@ export function catchAll(handle: (error: unknown) => UnknownResultMaybeAsync) {
   return (result: UnknownResultMaybeAsync) =>
     result instanceof Promise ? result.then(apply) : apply(result)
 }
-
-export function catchIf<
-  I extends ResultMaybeAsync<any, any>,
-  O extends ResultMaybeAsync<any, any>,
->(
-  predicate: (error: InferError<I>) => boolean,
-  handle: (error: InferError<I>) => O,
-): Combinator<
-  I | O,
-  InferSuccess<I> | InferSuccess<O>,
-  InferError<I> | InferError<O>
->
 
 /**
  * TODO: document

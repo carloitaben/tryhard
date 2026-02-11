@@ -69,6 +69,39 @@ describe(Result.tapError.name, () => {
   })
 })
 
+describe(Result.tapErrorTag.name, () => {
+  test("sync", () => {
+    const fn = vi.fn()
+    const result = pipe(
+      Result.error(new Result.UnknownException()),
+      Result.tapErrorTag("UnknownException", fn),
+    )
+    expect(result).toEqual(Result.error(new Result.UnknownException()))
+    expect(fn).toHaveBeenCalledWith(new Result.UnknownException())
+  })
+
+  test("no match", () => {
+    const fn = vi.fn()
+    const error: Result.Result<
+      never,
+      Result.UnknownException | { tag: "Other" }
+    > = Result.error(new Result.UnknownException())
+    const result = pipe(error, Result.tapErrorTag("Other", fn))
+    expect(result).toEqual(Result.error(new Result.UnknownException()))
+    expect(fn).not.toHaveBeenCalled()
+  })
+
+  test("async", () => {
+    const fn = vi.fn(async () => {})
+    const result = pipe(
+      Result.error(Promise.resolve(new Result.UnknownException())),
+      Result.tapErrorTag("UnknownException", fn),
+    )
+    expect(result).resolves.toEqual(Result.error(new Result.UnknownException()))
+    expect(fn).toHaveBeenCalledWith(new Result.UnknownException())
+  })
+})
+
 describe(Result.map.name, () => {
   test("sync", () => {
     const result = pipe(
@@ -519,7 +552,10 @@ describe(Result.orDieWith.name, () => {
     expectTypeOf(ok).toEqualTypeOf<Result.Result<number, never>>()
 
     expect(() =>
-      pipe(Result.error("boom"), Result.orDieWith((e) => `mapped:${e}`)),
+      pipe(
+        Result.error("boom"),
+        Result.orDieWith((e) => `mapped:${e}`),
+      ),
     ).toThrow("mapped:boom")
   })
 
