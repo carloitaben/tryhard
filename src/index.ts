@@ -64,7 +64,9 @@ export type InferError<T> = [T] extends [
     : never
 
 type InferErrorTags<T> = Extract<InferError<T>, Tagged<string>>["tag"]
+
 type TagOf<E> = E extends { tag: infer T } ? T : never
+
 type TagKey<E> = Extract<TagOf<E>, string>
 
 type HandlerResultUnion<H> =
@@ -75,6 +77,7 @@ type HandlerResultUnion<H> =
     : never
 
 type HandlerSuccessUnion<H> = InferSuccess<HandlerResultUnion<H>>
+
 type HandlerErrorUnion<H> = InferError<HandlerResultUnion<H>>
 
 type HandlerMap<E> = {
@@ -86,16 +89,13 @@ type HandlerMap<E> = {
 
 type HandledTags<H> = Extract<keyof H, string>
 
-/**
- * TODO: document
- */
 export function ok<A>(value: Promise<A>): ResultAsync<A, never>
 
+export function ok<A>(value: A): Result<A, never>
+
 /**
  * TODO: document
  */
-export function ok<A>(value: A): Result<A, never>
-
 export function ok<A>(value: A): ResultMaybeAsync<A, never> {
   if (value instanceof Promise) {
     return value.then<Result<A, never>>(ok)
@@ -107,16 +107,13 @@ export function ok<A>(value: A): ResultMaybeAsync<A, never> {
   }
 }
 
-/**
- * TODO: document
- */
 export function error<E>(error: Promise<E>): ResultAsync<never, E>
 
+export function error<E>(error: E): Result<never, E>
+
 /**
  * TODO: document
  */
-export function error<E>(error: E): Result<never, E>
-
 export function error<E>(err: E): ResultMaybeAsync<never, E> {
   if (err instanceof Promise) {
     return err.then<Result<never, E>>(error)
@@ -153,7 +150,7 @@ export function isError(value: unknown): value is Error<unknown> {
   return isResult(value) && value.type === "error"
 }
 
-interface Tagged<T extends string> {
+export interface Tagged<T extends string> {
   tag: T
 }
 
@@ -161,7 +158,10 @@ type BivariantHandler<E, R> = {
   bivarianceHack(error: E): R
 }["bivarianceHack"]
 
-function isTagged(value: unknown): value is Tagged<string> {
+/**
+ * TODO: document
+ */
+export function isTagged(value: unknown): value is Tagged<string> {
   return Boolean(
     value &&
       typeof value === "object" &&
@@ -170,7 +170,10 @@ function isTagged(value: unknown): value is Tagged<string> {
   )
 }
 
-function isTaggedWith<T extends string>(
+/**
+ * TODO: document
+ */
+export function isTaggedWith<T extends string>(
   value: unknown,
   tag: T,
 ): value is Tagged<T> {
@@ -198,21 +201,18 @@ export class UnknownException extends TaggedError("UnknownException") {
   }
 }
 
-/**
- * TODO: document
- */
 function trySync<Args extends unknown[], A>(
   callback: (...args: Args) => A,
 ): (...args: Args) => Result<A, UnknownException>
 
-/**
- * TODO: document
- */
 function trySync<Args extends unknown[], A, E>(
   callback: (...args: Args) => A,
   onError: (error: unknown) => E,
 ): (...args: Args) => Result<A, E>
 
+/**
+ * TODO: document
+ */
 function trySync(
   callback: (...args: unknown[]) => unknown,
   onError?: (error: unknown) => unknown,
@@ -229,21 +229,18 @@ function trySync(
 
 export { trySync as try }
 
-/**
- * TODO: document
- */
 export function tryPromise<Args extends unknown[], A>(
   callback: (...args: Args) => Promise<A>,
 ): (...args: Args) => ResultAsync<A, UnknownException>
 
-/**
- * TODO: document
- */
 export function tryPromise<Args extends unknown[], A, E>(
   callback: (...args: Args) => Promise<A>,
   onError: (error: unknown) => E | Promise<E>,
 ): (...args: Args) => ResultAsync<A, E>
 
+/**
+ * TODO: document
+ */
 export function tryPromise(
   callback: (...args: unknown[]) => Promise<unknown>,
   onError?: (error: unknown) => unknown | Promise<unknown>,
@@ -334,12 +331,7 @@ export function mapError<I extends ResultMaybeAsync<any, any>, O>(
 ): Combinator<I, InferSuccess<I>, O>
 
 export function mapError(callback: (value: unknown) => unknown) {
-  function apply(result: UnknownResult): UnknownResult {
-    if (isOk(result)) return result
-    return error(callback(result.error))
-  }
-  return (result: UnknownResultMaybeAsync) =>
-    result instanceof Promise ? result.then(apply) : apply(result)
+  return orElseFail(callback)
 }
 
 /**
@@ -412,9 +404,7 @@ export function catchAll<
 export function catchAll(handle: (error: unknown) => UnknownResultMaybeAsync) {
   function apply(result: UnknownResult) {
     if (isOk(result)) return result
-    const next = handle(result.error)
-    if (!(next instanceof Promise)) return next
-    return next.then<UnknownResult>(() => next)
+    return handle(result.error)
   }
   return (result: UnknownResultMaybeAsync) =>
     result instanceof Promise ? result.then(apply) : apply(result)
@@ -455,9 +445,7 @@ export function catchIf(
   function apply(result: UnknownResult) {
     if (isOk(result)) return result
     if (!predicate(result.error)) return result
-    const next = handle(result.error)
-    if (!(next instanceof Promise)) return next
-    return next.then<UnknownResult>(() => next)
+    return handle(result.error)
   }
   return (result: UnknownResultMaybeAsync) =>
     result instanceof Promise ? result.then(apply) : apply(result)
@@ -483,9 +471,8 @@ export function catchSome(
   function apply(result: UnknownResult) {
     if (isOk(result)) return result
     const next = handle(result.error)
-    if (next === undefined) return result
-    if (!(next instanceof Promise)) return next
-    return next.then<UnknownResult>(() => next)
+    if (isResult(next)) return next
+    return result
   }
   return (result: UnknownResultMaybeAsync) =>
     result instanceof Promise ? result.then(apply) : apply(result)
@@ -515,9 +502,7 @@ export function catchTag<
   function apply(result: UnknownResult) {
     if (isOk(result)) return result
     if (!isTaggedWith(result.error, tag)) return result
-    const next = handle(result.error)
-    if (!(next instanceof Promise)) return next
-    return next.then<UnknownResult>(() => next)
+    return handle(result.error)
   }
   return (result: UnknownResultMaybeAsync) =>
     result instanceof Promise ? result.then(apply) : apply(result)
@@ -548,9 +533,7 @@ export function catchTags(
     if (!isTagged(result.error)) return result
     const handler = handlers[result.error.tag]
     if (!handler) return result
-    const next = handler(result.error)
-    if (!(next instanceof Promise)) return next
-    return next.then<UnknownResult>(() => next)
+    return handler(result.error)
   }
   return (result: UnknownResultMaybeAsync) =>
     result instanceof Promise ? result.then(apply) : apply(result)
@@ -569,9 +552,7 @@ export function orElse<
 export function orElse(handle: (error: unknown) => UnknownResultMaybeAsync) {
   function apply(result: UnknownResult) {
     if (isOk(result)) return result
-    const next = handle(result.error)
-    if (!(next instanceof Promise)) return next
-    return next.then<UnknownResult>(() => next)
+    return handle(result.error)
   }
   return (result: UnknownResultMaybeAsync) =>
     result instanceof Promise ? result.then(apply) : apply(result)
@@ -581,16 +562,13 @@ export function orElse(handle: (error: unknown) => UnknownResultMaybeAsync) {
  * TODO: document
  */
 export function orElseFail<I extends ResultMaybeAsync<any, any>, O>(
-  error: (error: InferError<I>) => O,
+  mapError: (error: InferError<I>) => O,
 ): Combinator<I, InferSuccess<I>, O>
 
-export function orElseFail(error: (value: unknown) => unknown) {
+export function orElseFail(mapError: (value: unknown) => unknown) {
   function apply(result: UnknownResult): UnknownResult {
     if (isOk(result)) return result
-    return {
-      type: "error",
-      error: error(result.error),
-    }
+    return error(mapError(result.error))
   }
   return (result: UnknownResultMaybeAsync) =>
     result instanceof Promise ? result.then(apply) : apply(result)
