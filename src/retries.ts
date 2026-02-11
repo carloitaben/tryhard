@@ -48,16 +48,6 @@ export function retry<A, E>(
   const first = effect()
   if (first instanceof Promise) return retryAsync(effect, options)
   if (first.type === "ok") return first
-  const firstDelay = resolveDelay(options?.delay, {
-    attempt: 0,
-    error: first.error,
-  })
-  const shouldFirstRetry = resolveTimes(options?.times, {
-    attempt: 0,
-    error: first.error,
-  })
-  if (!shouldFirstRetry) return first
-  if (firstDelay > 0) return retryAsync(effect, options, first, firstDelay)
   let attempt = 0
   let current: Result<A, E> = first
   while (true) {
