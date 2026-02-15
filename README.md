@@ -14,7 +14,7 @@ Yet another Result type for TypeScript.
 
 ## Installation
 
-1. Copy `src/index.ts`
+1. Copy `src/result.ts`
 2. Copy `src/pipe.ts`
 3. Profit
 

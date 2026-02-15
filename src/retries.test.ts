@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from "bun:test"
-import * as Result from "./index"
+import * as Result from "./result"
 import { eventually, retry } from "./retries"
 
 describe(retry.name, () => {

@@ -1,4 +1,4 @@
-import type { Result, ResultMaybeAsync } from "./index"
+import type { Result, ResultMaybeAsync } from "./result"
 
 export type RetryContext<E> = {
   readonly attempt: number
