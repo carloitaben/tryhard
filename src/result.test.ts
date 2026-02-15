@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, expectTypeOf } from "bun:test"
 import { pipe } from "./pipe"
-import * as Result from "./index"
+import * as Result from "./result"
 
 describe("Result", () => {
   describe(Result.ok.name, () => {
