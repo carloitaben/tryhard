@@ -4,15 +4,13 @@ Yet another Result type for TypeScript.
 
 ## Comparison
 
-|               | neverthrow | typescript-result | better-result | byethrow | tryhard | effect |
-| ------------- | ---------- | ----------------- | ------------- | -------- | ------- | ------ |
-| Colorless     | 🛑         | ✅                | 🔶            | ✅       | ✅      | ✅     |
-| Just objects  | 🛑         | 🛑                | 🛑            | ✅       | ✅      | ✅     |
-| Tree-shakable | 🛑         | 🛑                | 🛑            | ✅       | ✅      | ✅     |
-| Effect-flavor | 🛑         | 🔶                | ✅            | 🛑       | ✅      | ✅     |
-| Effect        | 🛑         | 🛑                | 🛑            | 🛑       | 🛑      | ✅     |
-
-(I'm still investigating this. The comparison may be incorrect.)
+|                       | neverthrow | typescript-result | better-result | byethrow | tryhard | effect |
+| --------------------- | ---------- | ----------------- | ------------- | -------- | ------- | ------ |
+| Colorless combinators | 🛑         | ✅                | ✅            | ✅       | ✅      | ✅     |
+| Just objects          | 🛑         | 🛑                | 🛑            | ✅       | ✅      | 🛑     |
+| Tree-shakable         | 🛑         | 🛑                | 🛑            | ✅       | ✅      | 🔶     |
+| Effect-flavor         | 🛑         | 🛑                | ✅            | 🔶       | 🛑      | ✅     |
+| Effect                | 🛑         | 🛑                | 🛑            | 🛑       | 🛑      | ✅     |
 
 ## Installation
 
@@ -29,6 +27,10 @@ Yet another Result type for TypeScript.
 ### execution
 
 (try, tryPromise)
+
+### generators
+
+(gen, yieldResult, yieldAsync)
 
 ### transforms
 

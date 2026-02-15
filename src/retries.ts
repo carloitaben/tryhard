@@ -67,7 +67,10 @@ export function eventually<A, E>(
   effect: () => ResultMaybeAsync<A, E>,
   options?: EventuallyOptions<E>,
 ): ResultMaybeAsync<A, E> {
-  return retry(effect, { times: Number.POSITIVE_INFINITY, delay: options?.delay })
+  return retry(effect, {
+    times: Number.POSITIVE_INFINITY,
+    delay: options?.delay,
+  })
 }
 
 async function retryAsync<A, E>(
@@ -90,9 +93,10 @@ async function retryAsync<A, E>(
     if (current.type === "ok") return current
     const context = { attempt, error: current.error }
     if (!resolveTimes(options?.times, context)) return current
-    const delayMs = attempt === 0 && firstDelay !== undefined
-      ? firstDelay
-      : resolveDelay(options?.delay, context)
+    const delayMs =
+      attempt === 0 && firstDelay !== undefined
+        ? firstDelay
+        : resolveDelay(options?.delay, context)
     await sleep(delayMs)
     attempt += 1
     current = await effect()
