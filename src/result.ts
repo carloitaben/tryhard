@@ -1539,7 +1539,7 @@ function foldValidation<Output, A, E>(
  */
 export function schema<
   S extends StandardSchemaV1,
-  I extends ResultMaybeAsync<StandardSchemaV1.InferInput<S>, any>,
+  I extends UnknownResultMaybeAsync,
   O,
 >(
   schema: S,
@@ -1570,7 +1570,7 @@ export function schema(schema: StandardSchemaV1) {
  */
 export function schemaOrElse<
   S extends StandardSchemaV1,
-  I extends ResultMaybeAsync<StandardSchemaV1.InferInput<S>, any>,
+  I extends UnknownResultMaybeAsync,
   O,
 >(schema: S, orElse: () => O): Combinator<I, InferSuccess<I> | O, InferError<I>>
 
@@ -1601,7 +1601,7 @@ export function schemaOrElse(schema: StandardSchemaV1, orElse: () => unknown) {
  */
 export function schemaOrFail<
   S extends StandardSchemaV1,
-  I extends ResultMaybeAsync<StandardSchemaV1.InferInput<S>, any>,
+  I extends UnknownResultMaybeAsync,
   O,
 >(
   schema: S,
@@ -1642,7 +1642,7 @@ export function schemaOrFail(
  */
 export function schemaOrDie<
   S extends StandardSchemaV1,
-  I extends ResultMaybeAsync<StandardSchemaV1.InferInput<S>, any>,
+  I extends UnknownResultMaybeAsync,
 >(
   schema: S,
   orDie: () => never,
