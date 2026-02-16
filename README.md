@@ -9,7 +9,7 @@ Yet another Result type for TypeScript.
 | Colorless combinators | 🛑         | ✅                | ✅            | ✅       | ✅      | ✅     |
 | Just objects          | 🛑         | 🛑                | 🛑            | ✅       | ✅      | 🛑     |
 | Tree-shakable         | 🛑         | 🛑                | 🛑            | ✅       | ✅      | 🔶     |
-| Effect-flavor         | 🛑         | 🛑                | ✅            | 🔶       | 🛑      | ✅     |
+| Effect-flavor         | 🛑         | 🛑                | ✅            | 🛑       | ✅      | ✅     |
 | Effect                | 🛑         | 🛑                | 🛑            | 🛑       | 🛑      | ✅     |
 
 ## Installation
