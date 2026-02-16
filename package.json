@@ -1,6 +1,10 @@
 {
   "name": "tryhard",
   "type": "module",
+  "scripts": {
+    "test": "test ./src/",
+    "check": "tsc --noEmit"
+  },
   "prettier": {
     "semi": false
   },

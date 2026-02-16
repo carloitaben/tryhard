@@ -145,9 +145,9 @@ export function ok<A>(value: A): Result<A, never>
  * **Example**
  *
  * ```ts
- * const r1 = ok()
- * const r2 = ok(123)
- * const r3 = ok(Promise.resolve("done"))
+ * const r1 = Result.ok()
+ * const r2 = Result.ok(123)
+ * const r3 = Result.ok(Promise.resolve("done"))
  * ```
  *
  * @category Constructors
@@ -178,8 +178,8 @@ export function error<E>(error: E): Result<never, E>
  * **Example**
  *
  * ```ts
- * const r1 = error("boom")
- * const r2 = error(Promise.resolve(new Error("boom")))
+ * const r1 = Result.error("boom")
+ * const r2 = Result.error(Promise.resolve(new Error("boom")))
  * ```
  *
  * @category Constructors
@@ -357,7 +357,7 @@ function applyMaybeAsync(
  * **Example**
  *
  * ```ts
- * const NotFound = TaggedError("NotFound")
+ * const NotFound = Result.TaggedError("NotFound")
  * const err = new NotFound("missing")
  * ```
  *
@@ -431,7 +431,7 @@ function trySync<Args extends unknown[], A, E>(
  * **Example**
  *
  * ```ts
- * const parse = try((s: string) => JSON.parse(s))
+ * const parse = Result.try((s: string) => JSON.parse(s))
  * const r1 = parse("{\"ok\":true}")
  * const r2 = parse("bad json")
  * ```
@@ -475,7 +475,7 @@ export function tryPromise<Args extends unknown[], A, E>(
  * **Example**
  *
  * ```ts
- * const fetchJson = tryPromise(async () => {
+ * const fetchJson = Result.tryPromise(async () => {
  *   const res = await fetch("/data")
  *   return res.json()
  * })
@@ -592,7 +592,7 @@ async function runAsyncGen(
  *
  * ```ts
  * const out = Result.gen(function* () {
- *   const n = yield* yieldResult(ok(1))
+ *   const n = yield* Result.yieldResult(Result.ok(1))
  *   return n + 1
  * })
  * ```
@@ -621,7 +621,7 @@ export function yieldResult<R extends UnknownResult>(
  *
  * ```ts
  * const out = await Result.gen(async function* () {
- *   const n = yield* yieldAsync(ok(1))
+ *   const n = yield* Result.yieldAsync(Result.ok(1))
  *   return n + 1
  * })
  * ```
@@ -656,7 +656,7 @@ export function yieldAsync<R extends UnknownResultMaybeAsync>(
  *
  * ```ts
  * const out = Result.gen(function* () {
- *   const n = yield* yieldResult(ok(1))
+ *   const n = yield* Result.yieldResult(Result.ok(1))
  *   return n + 1
  * })
  * ```
@@ -704,11 +704,11 @@ export function gen(generator: () => GenIterator) {
  *
  * ```ts
  * const applyDiscount = (n: number) =>
- *   n > 0 ? ok(n - 1) : error("bad")
+ *   n > 0 ? Result.ok(n - 1) : Result.error("bad")
  *
  * const out = pipe(
- *   ok(3),
- *   flatMap(applyDiscount)
+ *   Result.ok(3),
+ *   Result.flatMap(applyDiscount)
  * )
  * ```
  *
@@ -746,8 +746,8 @@ export function flatMap(callback: (value: unknown) => UnknownResult) {
  *
  * ```ts
  * const out = pipe(
- *   ok(1),
- *   map((n) => n + 1)
+ *   Result.ok(1),
+ *   Result.map((n) => n + 1)
  * )
  * ```
  *
@@ -758,8 +758,7 @@ export function map<I extends UnknownResultMaybeAsync, O>(
 ): Combinator<I, O, InferError<I>>
 
 export function map(callback: (value: unknown) => unknown) {
-  const combinator = flatMap((value: unknown) => ok(callback(value)))
-  return combinator
+  return flatMap((value: unknown) => ok(callback(value)))
 }
 
 /**
@@ -774,8 +773,8 @@ export function map(callback: (value: unknown) => unknown) {
  *
  * ```ts
  * const out = pipe(
- *   error("boom"),
- *   mapError((e) => new Error(e))
+ *   Result.error("boom"),
+ *   Result.mapError((e) => new Error(e))
  * )
  * ```
  *
@@ -801,8 +800,8 @@ export function mapError(callback: (value: unknown) => unknown) {
  *
  * ```ts
  * const out = pipe(
- *   ok(1),
- *   tap((n) => {
+ *   Result.ok(1),
+ *   Result.tap((n) => {
  *     console.log(n)
  *   })
  * )
@@ -815,12 +814,11 @@ export function tap<I extends UnknownResultMaybeAsync>(
 ): Combinator<I, InferSuccess<I>, InferError<I>>
 
 export function tap(callback: (value: unknown) => void | Promise<void>) {
-  const combinator = flatMap((value: unknown) => {
+  return flatMap((value: unknown) => {
     const next = callback(value)
     if (!(next instanceof Promise)) return ok(value)
     return next.then<UnknownResult>(() => ok(value))
   })
-  return combinator
 }
 
 /**
@@ -835,8 +833,8 @@ export function tap(callback: (value: unknown) => void | Promise<void>) {
  *
  * ```ts
  * const out = pipe(
- *   error("boom"),
- *   tapError((e) => {
+ *   Result.error("boom"),
+ *   Result.tapError((e) => {
  *     console.error(e)
  *   })
  * )
@@ -874,8 +872,8 @@ export function tapError(callback: (value: unknown) => void | Promise<void>) {
  * }
  *
  * const out = pipe(
- *   error(new NotFound()),
- *   tapErrorTag("NotFound", (e) => {
+ *   Result.error(new NotFound()),
+ *   Result.tapErrorTag("NotFound", (e) => {
  *     console.log(e.tag)
  *   })
  * )
@@ -917,8 +915,8 @@ export function tapErrorTag(
  *
  * ```ts
  * const out = pipe(
- *   ok(-1),
- *   filterOrElse((n) => n > 0, () => 0)
+ *   Result.ok(-1),
+ *   Result.filterOrElse((n) => n > 0, () => 0)
  * )
  * ```
  *
@@ -933,10 +931,9 @@ export function filterOrElse(
   predicate: (value: unknown) => unknown,
   orElse: () => unknown,
 ) {
-  const combinator = flatMap((value: unknown) =>
+  return flatMap((value: unknown) =>
     predicate(value) ? ok(value) : ok(orElse()),
   )
-  return combinator
 }
 
 /**
@@ -951,8 +948,8 @@ export function filterOrElse(
  *
  * ```ts
  * const out = pipe(
- *   ok(-1),
- *   filterOrFail((n) => n > 0, () => "bad")
+ *   Result.ok(-1),
+ *   Result.filterOrFail((n) => n > 0, () => "bad")
  * )
  * ```
  *
@@ -967,10 +964,9 @@ export function filterOrFail(
   predicate: (value: unknown) => unknown,
   orFailWith: (value: unknown) => unknown,
 ) {
-  const combinator = flatMap((value: unknown) =>
+  return flatMap((value: unknown) =>
     predicate(value) ? ok(value) : error(orFailWith(value)),
   )
-  return combinator
 }
 
 /**
@@ -985,8 +981,8 @@ export function filterOrFail(
  *
  * ```ts
  * const out = pipe(
- *   ok(-1),
- *   filterOrDie((n) => n > 0, () => {
+ *   Result.ok(-1),
+ *   Result.filterOrDie((n) => n > 0, () => {
  *     throw new Error("bad")
  *   })
  * )
@@ -1003,10 +999,7 @@ export function filterOrDie(
   predicate: (value: unknown) => unknown,
   orDie: () => never,
 ) {
-  const combinator = flatMap((value: unknown) =>
-    predicate(value) ? ok(value) : orDie(),
-  )
-  return combinator
+  return flatMap((value: unknown) => (predicate(value) ? ok(value) : orDie()))
 }
 
 /**
@@ -1021,8 +1014,8 @@ export function filterOrDie(
  *
  * ```ts
  * const out = pipe(
- *   error("boom"),
- *   catchAll((e) => ok(`recover: ${e}`))
+ *   Result.error("boom"),
+ *   Result.catchAll((e) => Result.ok(`recover: ${e}`))
  * )
  * ```
  *
@@ -1057,8 +1050,8 @@ export function catchAll(handle: (error: unknown) => UnknownResultMaybeAsync) {
  * const isNotFound = (e: Error): e is Error => e.message === "404"
  *
  * const out = pipe(
- *   error(new Error("404")),
- *   catchIf(isNotFound, () => ok("default"))
+ *   Result.error(new Error("404")),
+ *   Result.catchIf(isNotFound, () => Result.ok("default"))
  * )
  * ```
  *
@@ -1101,8 +1094,8 @@ export function catchIf(
  *
  * ```ts
  * const out = pipe(
- *   error("skip"),
- *   catchSome((e) => (e === "skip" ? ok(0) : undefined))
+ *   Result.error("skip"),
+ *   Result.catchSome((e) => (e === "skip" ? Result.ok(0) : undefined))
  * )
  * ```
  *
@@ -1146,8 +1139,8 @@ export function catchSome(
  * }
  *
  * const out = pipe(
- *   error(new NotFound()),
- *   catchTag("NotFound", () => ok("default"))
+ *   Result.error(new NotFound()),
+ *   Result.catchTag("NotFound", () => Result.ok("default"))
  * )
  * ```
  *
@@ -1197,10 +1190,10 @@ export function catchTag<
  * }
  *
  * const out = pipe(
- *   error(new NotFound()),
- *   catchTags({
- *     NotFound: () => ok("default"),
- *     Unauthorized: () => error("nope"),
+ *   Result.error(new NotFound()),
+ *   Result.catchTags({
+ *     NotFound: () => Result.ok("default"),
+ *     Unauthorized: () => Result.error("nope"),
  *   })
  * )
  * ```
@@ -1246,8 +1239,8 @@ export function catchTags(
  *
  * ```ts
  * const out = pipe(
- *   error("boom"),
- *   orElse(() => ok(0))
+ *   Result.error("boom"),
+ *   Result.orElse(() => Result.ok(0))
  * )
  * ```
  *
@@ -1279,8 +1272,8 @@ export function orElse(handle: (error: unknown) => UnknownResultMaybeAsync) {
  *
  * ```ts
  * const out = pipe(
- *   error("boom"),
- *   orElseFail((e) => new Error(e))
+ *   Result.error("boom"),
+ *   Result.orElseFail((e) => new Error(e))
  * )
  * ```
  *
@@ -1310,8 +1303,8 @@ export function orElseFail(mapError: (value: unknown) => unknown) {
  *
  * ```ts
  * const out = pipe(
- *   error("boom"),
- *   orElseSucceed(() => 0)
+ *   Result.error("boom"),
+ *   Result.orElseSucceed(() => 0)
  * )
  * ```
  *
@@ -1364,8 +1357,8 @@ export function orDie() {
  *
  * ```ts
  * const out = pipe(
- *   error("boom"),
- *   orDieWith((e) => new Error(e))
+ *   Result.error("boom"),
+ *   Result.orDieWith((e) => new Error(e))
  * )
  * ```
  *
@@ -1526,7 +1519,23 @@ function foldValidation<Output, A, E>(
 }
 
 /**
- * TODO: document
+ * Validate the success value with a Standard Schema.
+ *
+ * **Details**
+ *
+ * On success, returns the schema output. On validation failure, returns a
+ * `SchemaError`.
+ *
+ * **Example**
+ *
+ * ```ts
+ * const out = pipe(
+ *   Result.ok(input),
+ *   Result.schema(userSchema)
+ * )
+ * ```
+ *
+ * @category Combinators
  */
 export function schema<
   S extends StandardSchemaV1,
@@ -1537,15 +1546,27 @@ export function schema<
 ): Combinator<I, StandardSchemaV1.InferOutput<S>, InferError<I> | SchemaError>
 
 export function schema(schema: StandardSchemaV1) {
-  const combinator = flatMap((value: unknown) =>
-    validateMaybeAsync(schema, value),
-  )
-  return (result: UnknownResultMaybeAsync): UnknownResultMaybeAsync =>
-    combinator(result)
+  return flatMap((value: unknown) => validateMaybeAsync(schema, value))
 }
 
 /**
- * TODO: document
+ * Validate the success value or replace it on schema failure.
+ *
+ * **Details**
+ *
+ * If validation fails, returns the fallback value from `orElse`. Errors pass
+ * through unchanged.
+ *
+ * **Example**
+ *
+ * ```ts
+ * const out = pipe(
+ *   Result.ok(input),
+ *   Result.schemaOrElse(userSchema, () => defaultUser)
+ * )
+ * ```
+ *
+ * @category Combinators
  */
 export function schemaOrElse<
   S extends StandardSchemaV1,
@@ -1554,15 +1575,29 @@ export function schemaOrElse<
 >(schema: S, orElse: () => O): Combinator<I, InferSuccess<I> | O, InferError<I>>
 
 export function schemaOrElse(schema: StandardSchemaV1, orElse: () => unknown) {
-  const combinator = flatMap((value: unknown) =>
+  return flatMap((value: unknown) =>
     foldValidation(validateMaybeAsync(schema, value), () => ok(orElse())),
   )
-  return (result: UnknownResultMaybeAsync): UnknownResultMaybeAsync =>
-    combinator(result)
 }
 
 /**
- * TODO: document
+ * Validate the success value or fail with a new error on schema failure.
+ *
+ * **Details**
+ *
+ * If validation fails, the result becomes `Error` using `orFailWith`. Errors
+ * pass through unchanged.
+ *
+ * **Example**
+ *
+ * ```ts
+ * const out = pipe(
+ *   Result.ok(input),
+ *   Result.schemaOrFail(userSchema, () => new Error("invalid"))
+ * )
+ * ```
+ *
+ * @category Combinators
  */
 export function schemaOrFail<
   S extends StandardSchemaV1,
@@ -1577,17 +1612,33 @@ export function schemaOrFail(
   schema: StandardSchemaV1,
   orFailWith: () => unknown,
 ) {
-  const combinator = flatMap((value: unknown) =>
+  return flatMap((value: unknown) =>
     foldValidation(validateMaybeAsync(schema, value), () =>
       error(orFailWith()),
     ),
   )
-  return (result: UnknownResultMaybeAsync): UnknownResultMaybeAsync =>
-    combinator(result)
 }
 
 /**
- * TODO: document
+ * Validate the success value or throw on schema failure.
+ *
+ * **Details**
+ *
+ * This is the escape hatch for invalid values. If validation fails, `orDie`
+ * is invoked and the error is thrown.
+ *
+ * **Example**
+ *
+ * ```ts
+ * const out = pipe(
+ *   Result.ok(input),
+ *   Result.schemaOrDie(userSchema, () => {
+ *     throw new Error("invalid")
+ *   })
+ * )
+ * ```
+ *
+ * @category Combinators
  */
 export function schemaOrDie<
   S extends StandardSchemaV1,
@@ -1598,9 +1649,7 @@ export function schemaOrDie<
 ): Combinator<I, StandardSchemaV1.InferOutput<S>, InferError<I>>
 
 export function schemaOrDie(schema: StandardSchemaV1, orDie: () => never) {
-  const combinator = flatMap((value: unknown) =>
+  return flatMap((value: unknown) =>
     foldValidation(validateMaybeAsync(schema, value), () => orDie()),
   )
-  return (result: UnknownResultMaybeAsync): UnknownResultMaybeAsync =>
-    combinator(result)
 }

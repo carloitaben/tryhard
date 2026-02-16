@@ -41,17 +41,40 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+/**
+ * Retry an effect until it succeeds or retries run out.
+ *
+ * **Details**
+ *
+ * Retries run when the effect returns `Error`. Use `times` to cap retries and
+ * `delay` to wait between attempts.
+ *
+ * **Example**
+ *
+ * ```ts
+ * let attempts = 0
+ * const result = retry(
+ *   () => {
+ *     attempts += 1
+ *     return attempts < 2 ? Result.error("no") : Result.ok("yes")
+ *   },
+ *   { times: 2 }
+ * )
+ * ```
+ *
+ * @category Retry
+ */
 export function retry<A, E>(
   effect: () => ResultMaybeAsync<A, E>,
   options?: RetryOptions<E>,
 ): ResultMaybeAsync<A, E> {
   const first = effect()
   if (first instanceof Promise) return retryAsync(effect, options)
-  if (first.type === "ok") return first
+  if (first.tag === "ok") return first
   let attempt = 0
   let current: Result<A, E> = first
   while (true) {
-    if (current.type === "ok") return current
+    if (current.tag === "ok") return current
     const context = { attempt, error: current.error }
     if (!resolveTimes(options?.times, context)) return current
     const delayMs = resolveDelay(options?.delay, context)
@@ -63,6 +86,26 @@ export function retry<A, E>(
   }
 }
 
+/**
+ * Retry an effect until it succeeds.
+ *
+ * **Details**
+ *
+ * Equivalent to `retry` with infinite retries. Use `delay` to wait between
+ * attempts.
+ *
+ * **Example**
+ *
+ * ```ts
+ * let attempts = 0
+ * const result = eventually(() => {
+ *   attempts += 1
+ *   return attempts < 3 ? Result.error("no") : Result.ok("yes")
+ * })
+ * ```
+ *
+ * @category Retry
+ */
 export function eventually<A, E>(
   effect: () => ResultMaybeAsync<A, E>,
   options?: EventuallyOptions<E>,
@@ -90,7 +133,7 @@ async function retryAsync<A, E>(
   }
 
   while (true) {
-    if (current.type === "ok") return current
+    if (current.tag === "ok") return current
     const context = { attempt, error: current.error }
     if (!resolveTimes(options?.times, context)) return current
     const delayMs =
