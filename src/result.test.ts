@@ -169,9 +169,10 @@ describe(Result.try.name, () => {
       expect.unreachable()
     }
   })
-  it("returns error with UnknownException when function throws", () => {
+  it("wraps error with UnknownException when function throws", () => {
+    const cause = new Error("oops")
     const fn = Result.try(() => {
-      throw new Error("oops")
+      throw cause
     })
     const result = fn()
     expectTypeOf(result).toEqualTypeOf<
@@ -180,6 +181,7 @@ describe(Result.try.name, () => {
     expect(Result.isError(result)).toBe(true)
     if (Result.isError(result)) {
       expect(result.error).toBeInstanceOf(Result.UnknownException)
+      expect(result.error.cause).toBe(cause)
     } else {
       expect.unreachable()
     }
