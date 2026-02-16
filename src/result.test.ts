@@ -7,8 +7,8 @@ describe("Result", () => {
     it("creates Ok with value", () => {
       const result = Result.ok(1)
       expectTypeOf(result).toEqualTypeOf<Result.Result<number, never>>()
-      expect(result.type).toBe("ok")
-      if (result.type === "ok") {
+      expect(result.tag).toBe("ok")
+      if (result.tag === "ok") {
         expect(result.value).toBe(1)
       } else {
         expect.unreachable()
@@ -17,8 +17,8 @@ describe("Result", () => {
     it("creates Ok with null", () => {
       const result = Result.ok(null)
       expectTypeOf(result).toEqualTypeOf<Result.Result<null, never>>()
-      expect(result.type).toBe("ok")
-      if (result.type === "ok") {
+      expect(result.tag).toBe("ok")
+      if (result.tag === "ok") {
         expect(result.value).toBe(null)
       } else {
         expect.unreachable()
@@ -27,8 +27,8 @@ describe("Result", () => {
     it("creates Ok with undefined", () => {
       const result = Result.ok(undefined)
       expectTypeOf(result).toEqualTypeOf<Result.Result<undefined, never>>()
-      expect(result.type).toBe("ok")
-      if (result.type === "ok") {
+      expect(result.tag).toBe("ok")
+      if (result.tag === "ok") {
         expect(result.value).toBe(undefined)
       } else {
         expect.unreachable()
@@ -37,8 +37,8 @@ describe("Result", () => {
     it("creates Ok with void when called without arguments", () => {
       const result = Result.ok()
       expectTypeOf(result).toEqualTypeOf<Result.Result<void, never>>()
-      expect(result.type).toBe("ok")
-      if (result.type === "ok") {
+      expect(result.tag).toBe("ok")
+      if (result.tag === "ok") {
         expect(result.value).toBe(undefined)
       } else {
         expect.unreachable()
@@ -50,8 +50,8 @@ describe("Result", () => {
     it("creates Error", () => {
       const result = Result.error("oops")
       expectTypeOf(result).toEqualTypeOf<Result.Result<never, string>>()
-      expect(result.type).toBe("error")
-      if (result.type === "error") {
+      expect(result.tag).toBe("error")
+      if (result.tag === "error") {
         expect(result.error).toBe("oops")
       } else {
         expect.unreachable()
@@ -61,8 +61,8 @@ describe("Result", () => {
       const error = new Error("oops")
       const result = Result.error(error)
       expectTypeOf(result).toEqualTypeOf<Result.Result<never, Error>>()
-      expect(result.type).toBe("error")
-      if (result.type === "error") {
+      expect(result.tag).toBe("error")
+      if (result.tag === "error") {
         expect(result.error).toBe(error)
       } else {
         expect.unreachable()

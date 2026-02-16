@@ -1,10 +1,12 @@
-export type Ok<A> = {
-  readonly type: "ok"
+export interface Tagged<T extends string> {
+  readonly tag: T
+}
+
+export interface Ok<A> extends Tagged<"ok"> {
   readonly value: A
 }
 
-export type Error<E> = {
-  readonly type: "error"
+export interface Error<E> extends Tagged<"error"> {
   readonly error: E
 }
 
@@ -96,19 +98,15 @@ export type InferError<T> = [T] extends [
     ? E
     : never
 
-export interface Tagged<T extends string> {
-  tag: T
-}
-
 type BivariantHandler<E, R> = {
   bivarianceHack(error: E): R
 }["bivarianceHack"]
 
 type InferErrorTags<T> = Extract<InferError<T>, Tagged<string>>["tag"]
 
-type TagOf<E> = E extends { tag: infer T } ? T : never
+export type InferTag<E> = E extends { tag: infer T } ? T : never
 
-type TagKey<E> = Extract<TagOf<E>, string>
+type TagKey<E> = Extract<InferTag<E>, string>
 
 type HandlerResultUnion<H> =
   Exclude<H[keyof H], undefined> extends (...args: unknown[]) => infer R
@@ -160,7 +158,7 @@ export function ok(value?: unknown): UnknownResultMaybeAsync {
   }
 
   return {
-    type: "ok",
+    tag: "ok",
     value,
   }
 }
@@ -192,7 +190,7 @@ export function error<E>(err: E): ResultMaybeAsync<never, E> {
   }
 
   return {
-    type: "error",
+    tag: "error",
     error: err,
   }
 }
@@ -201,96 +199,6 @@ export class AssertionError extends Error {
   constructor(type: string, value: unknown) {
     super(`Assertion failed. Expected value of type ${type}`, { cause: value })
   }
-}
-
-/**
- * Check if a value is a `Result`.
- *
- * **Details**
- *
- * A value is a `Result` if it has a `type` discriminator and the corresponding
- * payload (`value` for ok, `error` for error).
- *
- * @category Guards
- */
-export function isResult(value: unknown): value is Result<unknown, unknown> {
-  if (value && typeof value === "object" && "type" in value) {
-    if (value.type === "ok") return "value" in value
-    if (value.type === "error") return "error" in value
-  }
-  return false
-}
-
-/**
- * Asserts that a value is a `Result`.
- *
- * **Details**
- *
- * A value is a `Result` if it has a `type` discriminator and the corresponding
- * payload (`value` for ok, `error` for error).
- *
- * @category Guards
- */
-export function assertResult(
-  value: unknown,
-): asserts value is Result<unknown, unknown> {
-  if (!isResult(value)) throw new AssertionError("Result.Result", value)
-}
-
-/**
- * Check if a value is `Ok`.
- *
- * **Details**
- *
- * A value is `Ok` if it has a `type` discriminator of `ok` and the
- * corresponding `value` payload.
- *
- * @category Guards
- */
-export function isOk(value: unknown): value is Ok<unknown> {
-  return isResult(value) && value.type === "ok"
-}
-
-/**
- * Asserts that a value is `Ok`.
- *
- * **Details**
- *
- * A value is `Ok` if it has a `type` discriminator of `ok` and the
- * corresponding `value` payload.
- *
- * @category Guards
- */
-export function assertOk(value: unknown): asserts value is Ok<unknown> {
-  if (!isOk(value)) throw new AssertionError("Result.Ok", value)
-}
-
-/**
- * Check if a value is `Error`.
- *
- * **Details**
- *
- * A value is `Error` if it has a `type` discriminator of `error` and the
- * corresponding `error` payload.
- *
- * @category Guards
- */
-export function isError(value: unknown): value is Error<unknown> {
-  return isResult(value) && value.type === "error"
-}
-
-/**
- * Asserts that a value is `Error`.
- *
- * **Details**
- *
- * A value is `Error` if it has a `type` discriminator of `error` and the
- * corresponding `error` payload.
- *
- * @category Guards
- */
-export function assertError(value: unknown): asserts value is Error<unknown> {
-  if (!isError(value)) throw new AssertionError("Result.Error", value)
 }
 
 /**
@@ -360,6 +268,82 @@ export function assertTagged(
   }
 }
 
+/**
+ * Check if a value is `Ok`.
+ *
+ * **Details**
+ *
+ * A value is `Ok` if it has a `tag` discriminator of `ok` and the
+ * corresponding `value` payload.
+ *
+ * @category Guards
+ */
+export function isOk(value: unknown): value is Ok<unknown> {
+  return isTagged(value, "ok") && "value" in value
+}
+
+/**
+ * Asserts that a value is `Ok`.
+ *
+ * **Details**
+ *
+ * A value is `Ok` if it has a `tag` discriminator of `ok` and the
+ * corresponding `value` payload.
+ *
+ * @category Guards
+ */
+export function assertOk(value: unknown): asserts value is Ok<unknown> {
+  if (!isOk(value)) throw new AssertionError("Result.Ok", value)
+}
+
+/**
+ * Check if a value is `Error`.
+ *
+ * **Details**
+ *
+ * A value is `Error` if it has a `tag` discriminator of `error` and the
+ * corresponding `error` payload.
+ *
+ * @category Guards
+ */
+export function isError(value: unknown): value is Error<unknown> {
+  return isTagged(value, "error") && "error" in value
+}
+
+/**
+ * Asserts that a value is `Error`.
+ *
+ * **Details**
+ *
+ * A value is `Error` if it has a `tag` discriminator of `error` and the
+ * corresponding `error` payload.
+ *
+ * @category Guards
+ */
+export function assertError(value: unknown): asserts value is Error<unknown> {
+  if (!isError(value)) throw new AssertionError("Result.Error", value)
+}
+
+/**
+ * Check if a value is a `Result`.
+ *
+ * @category Guards
+ */
+export function isResult(value: unknown): value is Result<unknown, unknown> {
+  return isOk(value) || isError(value)
+}
+
+/**
+ * Asserts that a value is a `Result`.
+ *
+ * @category Guards
+ */
+export function assertResult(
+  value: unknown,
+): asserts value is Result<unknown, unknown> {
+  if (!isResult(value)) throw new AssertionError("Result.Result", value)
+}
+
 function applyMaybeAsync(
   result: UnknownResultMaybeAsync,
   apply: (result: UnknownResult) => UnknownResultMaybeAsync,
@@ -368,13 +352,7 @@ function applyMaybeAsync(
 }
 
 /**
- * Create a tagged error class compatible with `Result` error values.
- *
- * **Details**
- *
- * The class includes a `tag` for pattern matching and conforms to the
- * `{ type: "error", error }` shape used by `Result`. This makes it a good fit
- * for tag-based combinators.
+ * Create a tagged error class.
  *
  * **Example**
  *
@@ -388,7 +366,6 @@ function applyMaybeAsync(
 export function TaggedError<const T extends string>(tag: T) {
   return class TaggedError extends Error implements Tagged<T> {
     public readonly tag = tag
-    public readonly type = "error"
     public readonly error = this
     constructor(message: string, options?: ErrorOptions) {
       super(message, options)
